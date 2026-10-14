@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum ResourceStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationType {
+  RESERVATION_CREATED
+  RESERVATION_CONFIRMED
+  RESERVATION_REJECTED
+  RESERVATION_CANCELLED
+  RESERVATION_REMINDER
+  RESOURCE_STATUS_CHANGED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          Role           @default(MEMBER)
+  department    String?
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+
+  reservations  Reservation[]  @relation("ReservationOwner")
+  decisions     Reservation[]  @relation("ReservationDecider")
+  notifications Notification[]
+  auditLogs     AuditLog[]
+}
+
+model ResourceCategory {
+  id        String     @id @default(cuid())
+  name      String     @unique // Meeting Room, Lab, Vehicle, Projector...
+  resources Resource[]
+}
+
+model Resource {
+  id                String           @id @default(cuid())
+  name              String
+  description       String?
+  location          String?
+  capacity          Int?
+  status            ResourceStatus   @default(ACTIVE)
+  // booking rules
+  openTime          String           @default("08:00") // HH:mm
+  closeTime         String           @default("18:00")
+  maxDurationMins   Int              @default(240)
+  requiresApproval  Boolean          @default(false)
+  categoryId        String
+  category          ResourceCategory @relation(fields: [categoryId], references: [id])
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
+
+  reservations      Reservation[]
+
+  @@unique([name, location])
+  @@index([categoryId])
+  @@index([status])
+}
+
+model Reservation {
+  id          String            @id @default(cuid())
+  title       String
+  purpose     String?
+  startTime   DateTime          @db.Timestamptz(3)
+  endTime     DateTime          @db.Timestamptz(3)
+  status      ReservationStatus @default(CONFIRMED)
+  attendees   Int?
+  reminderSent Boolean          @default(false)
+  rejectReason String?
+
+  resourceId  String
+  resource    Resource          @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+  userId      String
+  user        User              @relation("ReservationOwner", fields: [userId], references: [id])
+  decidedById String?
+  decidedBy   User?             @relation("ReservationDecider", fields: [decidedById], references: [id])
+
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+
+  notifications Notification[]
+
+  // Overlap prevention is enforced in Postgres via an EXCLUDE constraint (see migration SQL in the guide)
+  @@index([resourceId, startTime, endTime])
+  @@index([userId, startTime])
+  @@index([status, startTime])
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  type          NotificationType
+  title         String
+  message       String
+  readAt        DateTime?        @db.Timestamptz(3)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservationId String?
+  reservation   Reservation?     @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // e.g. RESERVATION_CANCELLED
+  entity     String   // Reservation | Resource
+  entityId   String
+  meta       Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+}
+
