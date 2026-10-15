@@ -8,7 +8,7 @@ Built for the **PrimeWave Lab (Pvt) Ltd Software Engineering Internship Technica
 |---|---|
 | **Repository** | https://github.com/Ekdvs/primewave-reservation |
 | **ER Diagram** | https://dbdiagram.io/d/ResourceHub-ER-6a4b23ee36d348d120723c9f |
-| **Demo Video** | _Add your video link here_ |
+| **Demo Video** | https://youtu.be/lA8PNCP29cU |
 
 ---
 
