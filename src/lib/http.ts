@@ -17,16 +17,17 @@ export const created = <T>(data: T) => {
     return NextResponse.json(data, { status: 201 });
 }
 
-export function route(handler: Handler):Handler {
-    return async (req, ctx) => {
-        try {
-            return await handler(req, ctx);
-        } catch (e) {
-            console.error(e);
-            return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-        }
-    };
+
+export function route(handler: Handler): Handler {
+  return async (req, ctx) => {
+    try {
+      return await handler(req, ctx);
+    } catch (e) {
+      return toErrorResponse(e);
+    }
+  };
 }
+
 
 export async function parseBody<S extends ZodTypeAny>(req: NextRequest, schema: S): Promise<z.infer<S>> {
   let json: unknown;

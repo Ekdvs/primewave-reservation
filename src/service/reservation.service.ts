@@ -56,27 +56,18 @@ function validateRules(resourse: Resource, start: Date, end: Date, attendees?: n
 }
 
 const conflictError = async (resourceId: string, start: Date, end: Date) => {
-    const conflicts = await prisma.reservation.findMany({
-        where: {
-            resourceId,
-            status: {
-                in: [...ACTIVE],
-                statTime: { lt: end },
-                endTime: { gt: start }
-            }
-        },
-        select: {
-            startTime: true,
-            endTime: true,
-            status: true
-        },
-        orderBy: {
-            startTime: "asc"
-        }
-    })
-
-    return new AppError(409, "BOOKING_CONFLICT", "This time slot overlaps with an existing reservation", { conflicts });
-}
+  const conflicts = await prisma.reservation.findMany({
+    where: {
+      resourceId,
+      status: { in: [...ACTIVE] },
+      startTime: { lt: end },
+      endTime: { gt: start },
+    },
+    select: { startTime: true, endTime: true, status: true },
+    orderBy: { startTime: "asc" },
+  });
+  return new AppError(409, "BOOKING_CONFLICT", "This time slot overlaps with an existing reservation", { conflicts });
+};
 
 export const createReservation = async (user: AuthUser, input: CreateReservationInput) => {
 
